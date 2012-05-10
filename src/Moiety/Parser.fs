@@ -145,7 +145,6 @@ module Parser =
             elif len = 1 then
                 list1.Head = list2.[0]
             else
-                //(list1 |> Seq.take len |> Seq.toArray) = list2
                 (comp (list1) (list2) 0 len)
 
         let delimiterMatcher = 
