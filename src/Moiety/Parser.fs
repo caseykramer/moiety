@@ -13,6 +13,28 @@ module Parser =
         let fieldDelimChars = fieldDelim.ToCharArray()
         let isSingleCharFieldDelim = fieldDelimChars.Length = 1
         let charFieldDelim = fieldDelimChars.[0]
+
+        let simpleMatch (list1:char list) (list2:char array) = 
+            list1.Head = list2.[0]
+
+        let segmentMatches (list1:char list) (list2:char array) = 
+            let rec comp (l1:char list) (l2:char array) (idx:int) (max:int) = 
+                let next = idx + 1
+                match next with 
+                    | x when x = max -> l1.[idx] = l2.[idx]
+                    | _ ->
+                        if l1.[idx] = l2.[idx] then
+                            comp l1 l2 next max
+                        else
+                            false
+                
+            let len = list2.Length
+            if list1.Length < len then
+                false
+            elif len = 1 then
+                list1.Head = list2.[0]
+            else
+                (comp (list1) (list2) 0 len)
     
         member x.FieldDelimiter:string = fieldDelim
         member x.RowDelimiter:string = rowDelim
@@ -26,6 +48,17 @@ module Parser =
         member x.IsSingleCharFieldDelim = isSingleCharFieldDelim
         member x.CharFieldDelim = fieldDelimChars.[0]
 
+        member x.FieldSegmentMatcher = 
+            if x.IsSingleCharFieldDelim then
+                simpleMatch
+            else
+                segmentMatches
+        member x.RowSegmentMatcher = 
+            if x.RowDelimChars.Length = 1 then
+                simpleMatch
+            else
+                segmentMatches
+
 
     let defaultSettings = new ParseSettings(",",System.Environment.NewLine,true)
 
@@ -36,6 +69,8 @@ module Parser =
         let mutable myLastChar = lastChar
         let mutable myIsInQuotes = isInQuotes
         let stringBuilder = new System.Text.StringBuilder()
+
+     
 
         member x.Stream 
             with get() = myStream
@@ -95,15 +130,6 @@ module Parser =
             else
                 false
 
-        member e.Peek = 
-            if currentIdx + 1 = maxIdx then
-                if reloadBuffer buffersize then
-                    buffer.[currentIdx + 1]
-                else
-                    failwith "Reached end of file"
-            else
-                buffer.[currentIdx + 1]
-        
         interface System.Collections.Generic.IEnumerator<char> with
             member e.MoveNext() = 
                     let nextIdx = currentIdx + 1
@@ -120,32 +146,7 @@ module Parser =
             member e.Current with get() = buffer.[currentIdx]
             member e.Current with get() = box(buffer.[currentIdx])    
 
-
-    let getField (stream) (settings:ParseSettings) =     
-        let matchesNewLine (c:char) = 
-            match c with 
-               | '\r' -> true
-               | '\n' -> true
-               | _ -> false
-
-        let rec segmentMatches (list1:char list) (list2:char array) = 
-            let rec comp (l1:char list) (l2:char array) (idx:int) (max:int) = 
-                let next = idx + 1
-                match next with 
-                    | x when x = max -> l1.[idx] = l2.[idx]
-                    | _ ->
-                        if l1.[idx] = l2.[idx] then
-                            comp l1 l2 next max
-                        else
-                            false
-                
-            let len = list2.Length
-            if list1.Length < len then
-                false
-            elif len = 1 then
-                list1.Head = list2.[0]
-            else
-                (comp (list1) (list2) 0 len)
+    let getField (stream) (settings:ParseSettings) =
 
         let delimiterMatcher = 
             if settings.IsSingleCharFieldDelim && settings.IsRowDelimNewline then
@@ -161,16 +162,16 @@ module Parser =
                 fun (c:char) (s:ParseState) ->
                     match c with
                         | x when x = settings.CharFieldDelim -> Field
-                        | _ when segmentMatches (c :: s.Field) (settings.RowDelimChars) -> Row
+                        | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
                         | _ -> NoMatch
             else
                 fun (c:char) (s:ParseState) -> 
                     match c with
                         | x when x = settings.FieldLast && 
-                                segmentMatches (c :: s.Field) (settings.FieldDelimChars) -> Field
+                                settings.FieldSegmentMatcher (c :: s.Field) (settings.FieldDelimChars) -> Field
                         | x when x = settings.RowLast ->
                             match (settings.RowFirstChar) with
-                                | _ when segmentMatches (c :: s.Field) (settings.RowDelimChars) -> Row
+                                | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
                                 | _ -> NoMatch
                         | _ -> NoMatch
 
