@@ -164,3 +164,17 @@ type ``Given a parser`` () =
         result |> should contain "\"one\",two,three"
         result |> should contain "four"
         result |> should contain "five"
+
+    [<Test>]
+    member test.``Can use a unix-style line ending with quoted fields`` ()=
+        let testString = "\"one\",\"two\",\"three\"\n\"a\",\"b\",\"c\""
+        use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
+        let result = getRows chars (new ParseSettings(defaultSettings.FieldDelimiter,"\n",true)) |> Seq.toList
+
+        result.Length |> should equal 2
+        result.[0] |> should contain "one"
+        result.[0] |> should contain "two"
+        result.[0] |> should contain "three"
+        result.[1] |> should contain "a"
+        result.[1] |> should contain "b"
+        result.[1] |> should contain "c"

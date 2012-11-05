@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Moiety", "Moiety\Moiety.fsproj", "{F2C89557-EB70-4887-B4A1-E7816E893FFD}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MoietyTests", "tests\MoietyTests\MoietyTests.fsproj", "{371D20A3-BBA9-4874-AF30-8FF6110D187C}"
