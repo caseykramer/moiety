@@ -24,7 +24,7 @@ Target "BuildApp" (fun _ ->
 )
 
 Target "BuildTest" (fun _ ->
-    MSBuildDebug testDir "Build" testReferences
+    MSBuildRelease testDir "Build" testReferences
         |> Log "TestBuild-Output:"
 )
 
