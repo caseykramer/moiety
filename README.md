@@ -3,6 +3,9 @@ moiety
 
 Parser for string delimited files
 
+*moi-e-ty* [moi-i-tee] - _noun_  
+   _an indefinite portion, part, or share_
+
 #### Features
 * Supports any string as a field delimiter (which can include multiple characters)
 * Supports any string as a row delimiter (again, supporting multiple characters)
