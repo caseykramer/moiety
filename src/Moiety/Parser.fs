@@ -113,7 +113,7 @@ module Parser =
 
     type charSequence(stream:System.IO.Stream,encoding:System.Text.Encoding option) =
         let buffersize = 0x80000
-        let reader = 
+        let mutable reader = 
             match encoding with
                 | None -> new System.IO.StreamReader(stream,true)
                 | Some(e) -> new System.IO.StreamReader(stream,e)
@@ -129,6 +129,13 @@ module Parser =
                 true
             else
                 false
+
+        member x.Reset() = 
+            currentIdx <- 0
+            maxIdx <- 0
+            reader <- match encoding with
+                      | None -> new System.IO.StreamReader(stream,true)
+                      | Some(e) -> new System.IO.StreamReader(stream,e) 
 
         interface System.Collections.Generic.IEnumerator<char> with
             member e.MoveNext() = 
@@ -267,12 +274,12 @@ module Parser =
             let field = getField stream settings
             match field with
                 | (EndOfField,f) -> getRow stream settings (f :: fields)
-                | (EndOfRow,f) -> (f :: fields) |> List.rev
+                | (EndOfRow,f) -> (f :: fields) |> List.rev 
                 | (EndOfFile,f) ->
                     endOfFile := true
-                    (f :: fields) |> List.rev
+                    (f :: fields) |> List.rev 
 
         seq{
             while(not !endOfFile) do
-                yield getRow stream settings []
+                yield getRow stream settings [] |> Seq.ofList
         }

@@ -16,12 +16,13 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
+    <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Debug\DSVFileParser.XML</DocumentationFile>
     <OtherFlags>--standalone</OtherFlags>
+    <OtherFlags>--keyfile:sn.key</OtherFlags>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,6 +32,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\DSVFileParser.XML</DocumentationFile>
+    <OtherFlags>--standalone</OtherFlags>
+    <OtherFlags>--keyfile:sn.key</OtherFlags>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -43,6 +46,7 @@
     <Compile Include="Parser.fs" />
     <Compile Include="DSVParser.fs" />
     <None Include="Script.fsx" />
+    <None Include="sn.key" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

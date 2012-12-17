@@ -38,7 +38,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars (defaultSettings) |> Seq.toList
 
-        result.Length |> should equal 2
+        result |> Seq.length |> should equal 2
         result |> should contain "one"
         result |> should contain "two"
 
@@ -51,12 +51,12 @@ type ``Given a parser`` () =
 
         result.Length |> should equal 2
         let row1 = result.[0]
-        row1.Length |> should equal 2
+        row1 |> Seq.length |> should equal 2
         row1 |> should contain "one"
         row1 |> should contain "two"
 
         let row2 = result.[1]
-        row2.Length |> should equal 2
+        row2 |> Seq.length |> should equal 2
         row2 |> should contain "three"
         row2 |> should contain "four" 
 
@@ -66,7 +66,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars (defaultSettings) |> Seq.toList
 
-        result.Length |> should equal 2
+        result |> Seq.length |> should equal 2
         result |> should contain "one"
         result |> should contain "two"
 
@@ -76,7 +76,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars (defaultSettings) |> Seq.toList
 
-        result.Length |> should equal 2
+        result |> Seq.length |> should equal 2
         result |> should contain "one,two"
         result |> should contain "three"
 
@@ -87,7 +87,7 @@ type ``Given a parser`` () =
         let result = getFields chars (defaultSettings) |> Seq.toList
         
 
-        result.Length |> should equal 2
+        result |> Seq.length |> should equal 2
         result |> should contain "one,\"two\""
         result |> should contain "three"
 
@@ -97,7 +97,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars (defaultSettings) |> Seq.toList
 
-        result.Length |> should equal 2
+        result |> Seq.length |> should equal 2
         result |> should contain "one\r\ntwo"
         result |> should contain "three"
 
@@ -109,14 +109,14 @@ type ``Given a parser`` () =
 
         result.Length |> should equal 2
         let row1 = result.[0]
-        row1.Length |> should equal 4
+        row1 |> Seq.length |> should equal 4
         row1 |> should contain "one"
         row1 |> should contain "two"
         row1 |> should contain "three"
         row1 |> should contain "four"
 
         let row2 = result.[1]
-        row2.Length |> should equal 4
+        row2 |> Seq.length |> should equal 4
         row2 |> should contain "a"
         row2 |> should contain "b"
         row2 |> should contain "c"
@@ -130,14 +130,14 @@ type ``Given a parser`` () =
 
         result.Length |> should equal 2
         let row1 = result.[0]
-        row1.Length |> should equal 4
+        row1 |> Seq.length |> should equal 4
         row1 |> should contain "one"
         row1 |> should contain "two"
         row1 |> should contain "three"
         row1 |> should contain "four"
 
         let row2 = result.[1]
-        row2.Length |> should equal 4
+        row2 |> Seq.length |> should equal 4
         row2 |> should contain "a"
         row2 |> should contain "b"
         row2 |> should contain "c"
@@ -149,7 +149,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars (new ParseSettings(defaultSettings.FieldDelimiter,defaultSettings.RowDelimiter,false)) |> Seq.toList
 
-        result.Length |> should equal 3
+        result |> Seq.length |> should equal 3
         result |> should contain "\"one"
         result |> should contain "two\""
         result |> should contain "three"
@@ -160,7 +160,7 @@ type ``Given a parser`` () =
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
         let result = getFields chars defaultSettings |> Seq.toList
 
-        result.Length |> should equal 3
+        result |> Seq.length |> should equal 3
         result |> should contain "\"one\",two,three"
         result |> should contain "four"
         result |> should contain "five"

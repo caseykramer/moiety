@@ -2,6 +2,7 @@
 
     open System
     open Parser
+    open System.Collections.Generic
 
     module Util = 
         let to_option x =
@@ -20,6 +21,11 @@
         member x.IsEndOfRow = endOfRow
         member x.IsEndOfFile = endOfFile
 
+        member x.Reset() = 
+            endOfRow <- false
+            endOfFile <- false
+            chars.Reset()
+
         member x.NextField():string =
             if endOfFile then
                 null
@@ -28,6 +34,7 @@
                 match result with 
                     | (Parser.EndOfFile,field) -> 
                         endOfFile <- true
+                        endOfRow <- true
                         field
                     | (Parser.EndOfRow,field) ->
                         endOfRow <- true
@@ -36,10 +43,19 @@
                         endOfRow <- false
                         endOfFile <- false
                         field
-        
-        member x.NextRow() = seq {
-            yield! getRows chars (settings)
-        }
+
+        member x.NextRow() = 
+            seq {
+                while not endOfRow do
+                    yield x.NextField()
+            }
+                
+        member x.AllRows() = 
+            seq{
+                while(not endOfFile) do
+                    yield x.NextRow()
+            }
+            
 
     type DSVStream(stream:System.IO.Stream,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool) =        
         inherit DSVParser(new charSequence (stream,None),fieldDelimiter,rowDelimiter,honorQuotes)
@@ -54,7 +70,7 @@
         new(path) = new DSVFile(path,",",System.Environment.NewLine,true,null)
         new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,System.Environment.NewLine,true,null)
         new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,true,null)
-        new(path,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVFile(path,fieldDelimiter,rowDelimiter,true,null)
+        new(path,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes,null)
 
         interface IDisposable with
             member x.Dispose() = (x.Chars :> IDisposable).Dispose()        
