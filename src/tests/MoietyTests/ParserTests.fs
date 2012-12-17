@@ -193,7 +193,7 @@ type ``Given a parser`` () =
         result.[1] |> should contain "five"
         result.[1] |> should contain "six"
 
-        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),",","\r\n",false)
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         let result2 = parser.AllRows() |> List.ofSeq;
 
         result2.Length |> should equal 2

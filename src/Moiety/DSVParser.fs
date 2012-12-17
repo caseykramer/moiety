@@ -4,7 +4,7 @@
     open Parser
     open System.Collections.Generic
 
-    module Util = 
+    module private Util = 
         let to_option x =
             match x with
                 | null -> None
@@ -76,17 +76,17 @@
     type DSVStream(stream:System.IO.Stream,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool,encoding:System.Text.Encoding) =        
         inherit DSVParser(new charSequence (stream,encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
 
-        new(stream) = new DSVStream(stream,",",System.Environment.NewLine,true,null)
-        new(stream,fieldDelimiter) = new DSVStream(stream,fieldDelimiter,System.Environment.NewLine,true,null)
-        new(stream,fieldDelimiter,rowDelimiter) = new DSVStream(stream,fieldDelimiter,rowDelimiter,true,null)
+        new(stream) = new DSVStream(stream,Parser.defaultSettings.FieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null) 
+        new(stream,fieldDelimiter) = new DSVStream(stream,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
+        new(stream,fieldDelimiter,rowDelimiter) = new DSVStream(stream,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(stream,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVStream(stream,fieldDelimiter,rowDelimiter,honorQuotes,null)
 
     type DSVFile(path:string,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool,encoding:System.Text.Encoding) =
         inherit DSVParser(new charSequence(new System.IO.FileStream(path,System.IO.FileMode.Open,System.IO.FileAccess.Read),encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
 
-        new(path) = new DSVFile(path,",",System.Environment.NewLine,true,null)
-        new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,System.Environment.NewLine,true,null)
-        new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,true,null)
+        new(path) = new DSVFile(path,Parser.defaultSettings.FieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
+        new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
+        new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(path,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes,null)
 
         interface IDisposable with
