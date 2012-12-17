@@ -274,12 +274,16 @@ module Parser =
             let field = getField stream settings
             match field with
                 | (EndOfField,f) -> getRow stream settings (f :: fields)
-                | (EndOfRow,f) -> (f :: fields) |> List.rev 
+                | (EndOfRow,f) -> (f :: fields) |> List.rev                 
                 | (EndOfFile,f) ->
                     endOfFile := true
-                    (f :: fields) |> List.rev 
+                    if fields.Length = 0 && System.String.IsNullOrWhiteSpace(f) then
+                        []
+                    else
+                        (f :: fields) |> List.rev 
 
         seq{
             while(not !endOfFile) do
-                yield getRow stream settings [] |> Seq.ofList
+                let row = (getRow stream settings [])
+                if row.Length > 0 then yield row |> Seq.ofList                    
         }

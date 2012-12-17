@@ -33,10 +33,11 @@ open Moiety
 use parser = new DSVFile("myfile.csv") // This assumes field delimiter = , row delimiter = \r\n
 
 // Now you can get data one field at a time
-let field = parser.NextField()
+let field = parser.GetNextField()
 
 // Or, you can get data one row at a time
-let row = parser.NextRow()
+parser.GetNextRow()
+let row = parser.CurrentRow
 ```
 
 C#
@@ -62,7 +63,8 @@ namespace MyThingThatUsesCSV
 
 		public IEnumerable<string> GetRow()
 		{
-			yield return _parser.NextRow();
+			_parser.GetNextRow();
+			yield return _parser.CurrentRow;
 		}
 
 		// We need to dispose the parser, since it handles creating the file stream

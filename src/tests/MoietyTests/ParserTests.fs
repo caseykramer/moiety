@@ -178,3 +178,28 @@ type ``Given a parser`` () =
         result.[1] |> should contain "a"
         result.[1] |> should contain "b"
         result.[1] |> should contain "c"
+
+    [<Test>]
+    member test.``Final Row-Delimiters are ignored if there is no row text`` () =
+        let testString = "one,two,three\r\nfour,five,six\r\n"
+        use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
+        let result = getRows chars (new ParseSettings(defaultSettings.FieldDelimiter,defaultSettings.RowDelimiter,false)) |> Seq.toList
+
+        result.Length |> should equal 2
+        result.[0] |> should contain "one"
+        result.[0] |> should contain "two"
+        result.[0] |> should contain "three"
+        result.[1] |> should contain "four"
+        result.[1] |> should contain "five"
+        result.[1] |> should contain "six"
+
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),",","\r\n",false)
+        let result2 = parser.AllRows() |> List.ofSeq;
+
+        result2.Length |> should equal 2
+        result2.[0] |> should contain "one"
+        result2.[0] |> should contain "two"
+        result2.[0] |> should contain "three"
+        result2.[1] |> should contain "four"
+        result2.[1] |> should contain "five"
+        result2.[1] |> should contain "six"
