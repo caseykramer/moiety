@@ -68,10 +68,30 @@ module Parser =
         let mutable myCurrentChar = currentChar
         let mutable myLastChar = lastChar
         let mutable myIsInQuotes = isInQuotes
+        let mutable lastFieldBlank = false
         let stringBuilder = new System.Text.StringBuilder()
 
-     
+        member x.ResetField() =
+            stringBuilder.Clear() |> ignore
+            myIsInQuotes <- false
+            myField <- []
+            if settings.HonorQuotedFields && myCurrentChar = '"' then
+                myCurrentChar <- myLastChar
+            else
+                ignore()
 
+            if myCurrentChar = char(0) then
+                lastFieldBlank <- true
+            else
+                lastFieldBlank <- false
+
+        member x.ResetRow() =
+            x.ResetField()
+            myCurrentChar <- char(0)
+            myLastChar <- char(0)
+            myIsInQuotes <- false
+            lastFieldBlank <- false
+        
         member x.Stream 
             with get() = myStream
             and  set(v) = myStream <- v
@@ -79,7 +99,6 @@ module Parser =
         member x.Settings = settings
     
         member x.Field = myField 
-            //and set(v) = myField <- v
     
         member x.CurrentChar 
             with get() = myCurrentChar 
@@ -92,6 +111,8 @@ module Parser =
         member x.IsInQuotes 
             with get() = myIsInQuotes 
             and  set(v) = myIsInQuotes <- v
+
+        member x.LastFieldBlank = lastFieldBlank
     
         member x.DelimMatcher = delimMatcher
 
@@ -113,10 +134,12 @@ module Parser =
 
     type charSequence(stream:System.IO.Stream,encoding:System.Text.Encoding option) =
         let buffersize = 0x80000
-        let mutable reader = 
+        let getReader (stream:System.IO.Stream) = 
             match encoding with
-                | None -> new System.IO.StreamReader(stream,true)
-                | Some(e) -> new System.IO.StreamReader(stream,e)
+            | None -> new System.IO.StreamReader(stream,true)
+            | Some(e) -> new System.IO.StreamReader(stream,e,true)
+
+        let mutable reader = getReader stream
         let buffer = Array.init(buffersize)(fun i -> char(0))
     
         let mutable currentIdx = 0
@@ -133,9 +156,10 @@ module Parser =
         member x.Reset() = 
             currentIdx <- 0
             maxIdx <- 0
-            reader <- match encoding with
-                      | None -> new System.IO.StreamReader(stream,true)
-                      | Some(e) -> new System.IO.StreamReader(stream,e) 
+            match stream.CanSeek with
+            | true -> stream.Seek(0L,IO.SeekOrigin.Begin) |> ignore
+            | false -> failwith "Cannot Reset a stream which does not support Seeking"
+            reader <- getReader stream
 
         interface System.Collections.Generic.IEnumerator<char> with
             member e.MoveNext() = 
@@ -153,35 +177,36 @@ module Parser =
             member e.Current with get() = buffer.[currentIdx]
             member e.Current with get() = box(buffer.[currentIdx])    
 
-    let getField (stream) (settings:ParseSettings) =
+    let getDelimiterMatcher (settings:ParseSettings) = 
+        if settings.IsSingleCharFieldDelim && settings.IsRowDelimNewline then
+            fun (c:char) (s:ParseState) ->
+                match c with
+                    | x when x = settings.CharFieldDelim -> Field
+                    | '\r' when s.LastFieldBlank = true -> Row
+                    | '\n' when s.LastFieldBlank = true -> Row
+                    | '\r' when s.CurrentChar <> char(0) -> Row
+                    | '\n' when s.CurrentChar <> char(0) -> Row
+                    | '\r' when s.CurrentChar = char(0)  -> Skip
+                    | '\n' when s.CurrentChar = char(0)  -> Skip
+                    | _ -> NoMatch
+        elif settings.IsSingleCharFieldDelim then
+            fun (c:char) (s:ParseState) ->
+                match c with
+                    | x when x = settings.CharFieldDelim -> Field
+                    | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
+                    | _ -> NoMatch
+        else
+            fun (c:char) (s:ParseState) -> 
+                match c with
+                    | x when x = settings.FieldLast && 
+                            settings.FieldSegmentMatcher (c :: s.Field) (settings.FieldDelimChars) -> Field
+                    | x when x = settings.RowLast ->
+                        match (settings.RowFirstChar) with
+                            | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
+                            | _ -> NoMatch
+                    | _ -> NoMatch
 
-        let delimiterMatcher = 
-            if settings.IsSingleCharFieldDelim && settings.IsRowDelimNewline then
-                fun (c:char) (s:ParseState) ->
-                    match c with
-                        | x when x = settings.CharFieldDelim -> Field
-                        | '\r' when s.CurrentChar <> char(0) -> Row
-                        | '\n' when s.CurrentChar <> char(0) -> Row
-                        | '\r' when s.CurrentChar = char(0)  -> Skip
-                        | '\n' when s.CurrentChar = char(0)  -> Skip
-                        | _ -> NoMatch
-            elif settings.IsSingleCharFieldDelim then
-                fun (c:char) (s:ParseState) ->
-                    match c with
-                        | x when x = settings.CharFieldDelim -> Field
-                        | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
-                        | _ -> NoMatch
-            else
-                fun (c:char) (s:ParseState) -> 
-                    match c with
-                        | x when x = settings.FieldLast && 
-                                settings.FieldSegmentMatcher (c :: s.Field) (settings.FieldDelimChars) -> Field
-                        | x when x = settings.RowLast ->
-                            match (settings.RowFirstChar) with
-                                | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
-                                | _ -> NoMatch
-                        | _ -> NoMatch
-
+    let getField (stream) (settings:ParseSettings) (state:ParseState) =
 
         let cleanDelimiter (field:string) (delimiter:string) =
             match (delimiter.Chars(0)) with
@@ -250,18 +275,21 @@ module Parser =
                 (EndOfFile,s.FieldString.TrimEnd(s.Settings.RowDelimChars))    
 
         if settings.HonorQuotedFields then
-            loopFieldWithQuotes (new ParseState(stream,settings,[],char(0),char(0),false, delimiterMatcher)) 
+            loopFieldWithQuotes (state) 
         else
-            loopFieldWithoutQuotes (new ParseState(stream,settings,[],char(0),char(0),false,delimiterMatcher)) 
+            loopFieldWithoutQuotes (state) 
 
+    (*
     let getFields (stream) settings = 
+            let delimiter = getDelimiterMatcher settings
+            let parseState = new ParseState(stream,settings,[],char(0),char(0),false, delimiter)                
             seq{
                 let run = ref true
-
                 while(!run) do
-                    let field = getField stream settings
+                    let field = getField stream settings (parseState)
                     match field with
                         | (EndOfField,field) -> 
+                            parseState.ResetField()
                             yield field
                         | (_, field) -> 
                             run := false
@@ -270,10 +298,12 @@ module Parser =
 
     let getRows (stream) settings = 
         let endOfFile = ref false;
-        let rec getRow stream settings fields = 
-            let field = getField stream settings
+        let rec getRow stream settings fields parseState = 
+            let field = getField stream settings parseState
             match field with
-                | (EndOfField,f) -> getRow stream settings (f :: fields)
+                | (EndOfField,f) -> 
+                    parseState.ResetField()
+                    getRow stream settings (f :: fields) parseState
                 | (EndOfRow,f) -> (f :: fields) |> List.rev                 
                 | (EndOfFile,f) ->
                     endOfFile := true
@@ -284,6 +314,10 @@ module Parser =
 
         seq{
             while(not !endOfFile) do
-                let row = (getRow stream settings [])
+                let delimMatcher = getDelimiterMatcher settings
+                let parseState = new ParseState(stream,settings,[],char(0),char(0),false, delimMatcher)     
+                let row = (getRow stream settings [] parseState)
                 if row.Length > 0 then yield row |> Seq.ofList                    
         }
+
+        *)

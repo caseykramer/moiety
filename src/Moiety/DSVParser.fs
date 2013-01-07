@@ -16,7 +16,9 @@
         let mutable endOfFile = false
         let mutable currentRow:string seq = null
         let settings = new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes)
-
+        let delimiter = getDelimiterMatcher settings
+        let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)                
+        
         member internal x.Chars = chars
 
         member x.IsEndOfRow = endOfRow
@@ -26,23 +28,27 @@
             endOfRow <- false
             endOfFile <- false
             chars.Reset()
+            currentRow <- null
+            parseState <- new ParseState(chars,settings,[],char(0),char(0),false,delimiter)
 
         member x.NextField():string =
             if endOfFile then
                 null
             else
-                let result = getField chars (settings)
+                let result = getField chars (settings) parseState
                 match result with 
                     | (Parser.EndOfFile,field) -> 
                         endOfFile <- true
                         endOfRow <- true
                         field
                     | (Parser.EndOfRow,field) ->
+                        parseState.ResetRow()
                         endOfRow <- true
                         field
                     | (Parser.EndOfField, field) -> 
                         endOfRow <- false
                         endOfFile <- false
+                        parseState.ResetField()
                         field
 
         member x.CurrentRow = currentRow
