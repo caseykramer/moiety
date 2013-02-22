@@ -205,7 +205,7 @@ type ``Given a parser`` () =
         result.[1] |> should contain "six"
 
     [<Test>]
-    member test.``Reset restores reader to original state so you can parse contents from the beginning again`` () =
+    member test.``Reset restores reader to original state so you can parse contents from the beginning again....without breaking this time`` () =
         let testString = "one,two,three\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         let encoding = new System.Text.UnicodeEncoding(true,true)
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.Convert(System.Text.Encoding.UTF8,encoding,System.Text.Encoding.UTF8.GetBytes(testString))),",",System.Environment.NewLine,false,encoding)
