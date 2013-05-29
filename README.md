@@ -78,8 +78,10 @@ namespace MyThingThatUsesCSV
 
 
 ##### Why I wrote my own
-Basically I needed a parser at work, and the existing solutions in .Net were either not licensed
-in a way I could use, or didn't have support for variable-length field and row delimiters
+Basically I needed a parser, and the existing solutions in .Net were either not licensed
+in a way I could use (MIT or Apache), or didn't have support for variable-length field and row delimiters. 
+The initial spikes were to support a need at work, which got canned, so I decided to take a Saturday and build 
+something I could share.
 
 ##### Why not use FParsec?
 I tried, and I was actually pleased with the way the grammer came together.  The problem was that when
