@@ -90,6 +90,6 @@ information that is kept during the parsing, but I'm not 100% sure.  I did as mu
 but I was never able to get something that had a flat memory usage profile.
 
 ##### Is it production ready?
-Yes! After my original Saturday hacking some I was approached by my old team because the production issue 
-that prompted this whole thing reared its ugly head again. I mentioned this project, and worked with them
+Yes! Some months after my original Saturday hacking session I was approached by my old team because the production 
+issue that prompted this whole thing reared its ugly head again. I mentioned this project, and worked with them
 to get it integrated (and fix a few bugs along the way). It has been running in production since Jan. 2013.
