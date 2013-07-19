@@ -58,13 +58,13 @@
             else
                 let rec getRow fields = 
                     let field = x.NextField()
-                    if endOfRow && fields |> List.length > 0 then
+                    if endOfRow && not endOfFile then
                         (field :: fields) |> List.rev
-                    else
-                        if endOfFile && fields |> List.length = 0 then
+                    elif endOfFile && (field.Length > 0 || fields.Length > 0) then
+                        (field :: fields) |> List.rev
+                    elif endOfFile && fields |> List.length = 0 then
                             []
-                        else
-                            getRow (field :: fields)
+                    else getRow (field :: fields)
                 match getRow [] with
                 | [] ->
                     false

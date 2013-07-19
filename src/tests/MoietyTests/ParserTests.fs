@@ -375,3 +375,16 @@ type ``Given a parser`` () =
         result4.[2] |> should equal "3"
 
         parser.GetNextRow() |> should equal false
+
+    [<Test>]
+    member test.``Can correctly parse single column files (no column delimiter)`` () = 
+        let testString = 
+            [ "one"
+              "two"
+              "three"
+              "four"
+              "five"
+              "six" ] |> List.reduce (sprintf "%s\r\n%s")
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
+        let results = parser.AllRows() |> List.ofSeq
+        results |> List.length |> should equal 6
