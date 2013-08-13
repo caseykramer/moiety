@@ -3,6 +3,14 @@
 
 open Fake
 
+let project = "Moiety"
+let authors = ["Casey Kramer"]
+let summary = "A parser for delimited text data (files or streams)"
+let description = "Supports using any string as a field delimiter, or row delimiter, quoted fields, and the ability to handle unicode reasonably well."
+let version = "1.0.0.2"
+let tags = "f# c# csv parsing text"
+let nugetDir = @".\nuget"
+
 let buildDir = @".\build\"
 let testDir =  @".\test\"
 
@@ -37,9 +45,31 @@ Target "Test" (fun _ ->
                 OutputFile = testDir + @"TestResults.xml"})
 )
 
+Target "Package" (fun _ ->
+    let nugetPath = "tools/nuget/NuGet.exe"
+    let nugetBuildDir = nugetDir @@ "build"
+
+    CopyDir nugetBuildDir buildDir allFiles
+    
+    NuGet (fun p ->
+        { p with
+            Authors = authors
+            Project = project
+            Summary = summary
+            Description = description
+            Version = version
+            OutputPath = nugetDir
+            AccessKey = getBuildParamOrDefault "nugetkey" ""
+            Publish = hasBuildParam "nugetkey"})  "moiety.nuspec"
+)
+  
+Target "All" DoNothing
+
 "Clean"
     ==> "BuildApp"
     ==> "BuildTest"
     ==> "Test"
+    ==> "Package"
+    ==> "All"
 
-Run "Test"
+Run <| getBuildParamOrDefault "target" "All"
