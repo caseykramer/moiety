@@ -14,6 +14,7 @@ Parser for string delimited files
 * Supports file encoding detection using BOM
 * Parses at a rate of around 10MB/sec (* on my machine, with standard comma/newline delimiters)
 * Provides constant memory usage, even when dealing with large files
+* Includes an optional field-length limit to keep badly-formed data from eating memory
 
 ### How to use it
 There are two classes available depdending on whether you're working with files or generic streams.  There 
