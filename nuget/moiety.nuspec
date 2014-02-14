@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>moiety</id>
+        <version>1.0.0</version>
+        <title>Parser for string delimited files</title>
+        <authors>Casey Kramer</authors>
+        <owners>Casey Kramer</owners>
+        <licenseUrl>https://raw.github.com/caseykramer/moiety/master/License.txt</licenseUrl>
+        <projectUrl>https://github.com/caseykramer/moiety</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Supports using any string as a field delimiter, or row delimiter, quoted fields, and the ability to handle unicode reasonably well.</description>
+        <summary>A parser for delimited text data (files or streams)</summary>
+        <language>en-US</language>
+        <tags>f# c# csv parsing text</tags>
+    </metadata>
+    <files>
+        <file src="build\Moiety.dll" target="lib\4.0\Moiety.dll" />
+    </files>
+</package>
