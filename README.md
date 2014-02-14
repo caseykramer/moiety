@@ -55,6 +55,9 @@ namespace MyThingThatUsesCSV
 		public MyCSVUsingClass(string fileName)
 		{
 			_parser = new DSVFile(fileName); // This assumes field delimiter = , row delimiter = \r\n
+			// you can also set a field-size limit, which raises an exception when a single
+			// field grows beyond the limit specified
+			_parser.MaxFieldSize = 1000000; // 1 million character limit
 		}
 
 		public string GetField()
