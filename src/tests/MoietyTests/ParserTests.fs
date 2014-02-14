@@ -388,3 +388,9 @@ type ``Given a parser`` () =
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         let results = parser.AllRows() |> List.ofSeq
         results |> List.length |> should equal 6
+
+    [<Test>]
+    member test.``Can set field size limit for early bailout of badly formed files`` () = 
+        let testString = ",,\r\n,,\r\n1,2,3\r\none,two,three\r\n,,\r\n,,\r\n1,2,3"
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
+        (fun () -> parser.AllRows() |> List.ofSeq |> ignore) |> should throw typeof<System.Exception>

@@ -15,7 +15,7 @@
         let mutable endOfRow = false
         let mutable endOfFile = false
         let mutable currentRow:string seq = null
-        let settings = new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes)
+        let mutable settings = new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,None)
         let delimiter = getDelimiterMatcher settings
         let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)                
         
@@ -23,6 +23,15 @@
 
         member x.IsEndOfRow = endOfRow
         member x.IsEndOfFile = endOfFile
+        member x.MaxFieldSize
+            with get() = match settings.FieldMaxSize with
+                         | None -> -1
+                         | Some i -> i
+            and set(v) = if v <= 0 
+                            then settings <- new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,None)
+                            else settings <-new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,Some v)
+                         x.Reset()
+
 
         member x.Reset() = 
             endOfRow <- false
@@ -86,6 +95,7 @@
         new(stream,fieldDelimiter) = new DSVStream(stream,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(stream,fieldDelimiter,rowDelimiter) = new DSVStream(stream,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(stream,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVStream(stream,fieldDelimiter,rowDelimiter,honorQuotes,null)
+        new(stream,fieldDelimiter,rowDelimiter,honorQuotes,maxFieldSize:int) as this = new DSVStream(stream,fieldDelimiter,rowDelimiter,honorQuotes,null) then this.MaxFieldSize <- maxFieldSize
 
     type DSVFile(path:string,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool,encoding:System.Text.Encoding) =
         inherit DSVParser(new charSequence(new System.IO.FileStream(path,System.IO.FileMode.Open,System.IO.FileAccess.Read),encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
@@ -94,6 +104,7 @@
         new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
         new(path,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes,null)
+        new(path,fieldDelimiter,rowDelimiter,honorQuotes,maxFieldSize:int) as this = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes) then this.MaxFieldSize <- maxFieldSize
 
         interface IDisposable with
             member x.Dispose() = (x.Chars :> IDisposable).Dispose()        

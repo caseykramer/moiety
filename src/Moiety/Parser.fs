@@ -4,7 +4,7 @@ module Parser =
 
     open System
 
-    type ParseSettings(fieldDelim:string,rowDelim:string,honorQuotes:bool) = 
+    type ParseSettings(fieldDelim:string,rowDelim:string,honorQuotes:bool,fieldMaxSize:int option) = 
         let fieldLast = fieldDelim.Chars(fieldDelim.Length - 1)
         let rowLast = rowDelim.Chars(rowDelim.Length - 1)
         let rowFirstChar = rowDelim.Chars(0)
@@ -47,7 +47,7 @@ module Parser =
         member x.FieldDelimChars = fieldDelimChars
         member x.IsSingleCharFieldDelim = isSingleCharFieldDelim
         member x.CharFieldDelim = fieldDelimChars.[0]
-
+        member x.FieldMaxSize = fieldMaxSize
         member x.FieldSegmentMatcher = 
             if x.IsSingleCharFieldDelim then
                 simpleMatch
@@ -60,7 +60,7 @@ module Parser =
                 segmentMatches
 
 
-    let defaultSettings = new ParseSettings(",",System.Environment.NewLine,true)
+    let defaultSettings = new ParseSettings(",",System.Environment.NewLine,true,None)
 
     type ParseState(stream:System.Collections.Generic.IEnumerator<char>,settings:ParseSettings,field:char list,currentChar:char,lastChar:char,isInQuotes:bool, delimMatcher:char->ParseState->CharMatch)= 
         let mutable myStream = stream
@@ -119,6 +119,9 @@ module Parser =
         member x.FieldString = stringBuilder.ToString()
 
         member x.AddCharacter c = 
+            if settings.FieldMaxSize.IsSome && myField.Length >= settings.FieldMaxSize.Value
+                then failwithf "Parsing aborted because the current field exceeds the maximum size limit of %i characters" settings.FieldMaxSize.Value
+                else ignore()
             myField <- c :: myField
             stringBuilder.Append(c) |> ignore
     and CharMatch =
@@ -213,8 +216,8 @@ module Parser =
                 | '\r' -> field.TrimEnd([|'\r';'\n'|])
                 | '\n' -> field.TrimEnd([|'\r';'\n'|])
                 | _ -> field.TrimEnd(settings.FieldDelimChars)
-
-        let rec loopFieldWithoutQuotes (s:ParseState) = 
+                
+        let rec loopFieldWithoutQuotes (s:ParseState) =             
             if s.Stream.MoveNext() then
                 let head = s.Stream.Current
                 match s.DelimMatcher head s with
@@ -277,47 +280,4 @@ module Parser =
         if settings.HonorQuotedFields then
             loopFieldWithQuotes (state) 
         else
-            loopFieldWithoutQuotes (state) 
-
-    (*
-    let getFields (stream) settings = 
-            let delimiter = getDelimiterMatcher settings
-            let parseState = new ParseState(stream,settings,[],char(0),char(0),false, delimiter)                
-            seq{
-                let run = ref true
-                while(!run) do
-                    let field = getField stream settings (parseState)
-                    match field with
-                        | (EndOfField,field) -> 
-                            parseState.ResetField()
-                            yield field
-                        | (_, field) -> 
-                            run := false
-                            yield field
-            }
-
-    let getRows (stream) settings = 
-        let endOfFile = ref false;
-        let rec getRow stream settings fields parseState = 
-            let field = getField stream settings parseState
-            match field with
-                | (EndOfField,f) -> 
-                    parseState.ResetField()
-                    getRow stream settings (f :: fields) parseState
-                | (EndOfRow,f) -> (f :: fields) |> List.rev                 
-                | (EndOfFile,f) ->
-                    endOfFile := true
-                    if fields.Length = 0 && System.String.IsNullOrWhiteSpace(f) then
-                        []
-                    else
-                        (f :: fields) |> List.rev 
-
-        seq{
-            while(not !endOfFile) do
-                let delimMatcher = getDelimiterMatcher settings
-                let parseState = new ParseState(stream,settings,[],char(0),char(0),false, delimMatcher)     
-                let row = (getRow stream settings [] parseState)
-                if row.Length > 0 then yield row |> Seq.ofList                    
-        }
-
-        *)
+            loopFieldWithoutQuotes (state)       
