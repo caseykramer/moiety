@@ -7,7 +7,7 @@ let project = "Moiety"
 let authors = ["Casey Kramer"]
 let summary = "A parser for delimited text data (files or streams)"
 let description = "Supports using any string as a field delimiter, or row delimiter, quoted fields, and the ability to handle unicode reasonably well."
-let version = "1.0.0.3"
+let version = "1.0.0.4"
 let tags = "f# c# csv parsing text"
 let nugetDir = @".\nuget"
 

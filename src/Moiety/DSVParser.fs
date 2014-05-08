@@ -21,6 +21,7 @@
         
         member internal x.Chars = chars
 
+        member x.CurrentEncoding with get() = chars.CurrentEncoding
         member x.IsEndOfRow = endOfRow
         member x.IsEndOfFile = endOfFile
         member x.MaxFieldSize

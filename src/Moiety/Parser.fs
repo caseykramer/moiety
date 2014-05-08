@@ -137,10 +137,14 @@ module Parser =
 
     type charSequence(stream:System.IO.Stream,encoding:System.Text.Encoding option) =
         let buffersize = 0x80000
+        let mutable encodingUsed = System.Text.Encoding.Default
         let getReader (stream:System.IO.Stream) = 
-            match encoding with
-            | None -> new System.IO.StreamReader(stream,true)
-            | Some(e) -> new System.IO.StreamReader(stream,e,true)
+            let sr =
+                match encoding with
+                | None -> new System.IO.StreamReader(stream,true)
+                | Some(e) -> new System.IO.StreamReader(stream,e,true)
+            encodingUsed <- sr.CurrentEncoding
+            sr
 
         let mutable reader = getReader stream
         let buffer = Array.init(buffersize)(fun i -> char(0))
@@ -155,7 +159,8 @@ module Parser =
                 true
             else
                 false
-
+        member x.CurrentEncoding
+            with get() = encodingUsed
         member x.Reset() = 
             currentIdx <- 0
             maxIdx <- 0
