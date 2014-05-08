@@ -65,6 +65,7 @@ module Parser =
     type ParseState(stream:System.Collections.Generic.IEnumerator<char>,settings:ParseSettings,field:char list,currentChar:char,lastChar:char,isInQuotes:bool, delimMatcher:char->ParseState->CharMatch)= 
         let mutable myStream = stream
         let mutable myField = field
+        let mutable myFieldSize = -1
         let mutable myCurrentChar = currentChar
         let mutable myLastChar = lastChar
         let mutable myIsInQuotes = isInQuotes
@@ -75,15 +76,13 @@ module Parser =
             stringBuilder.Clear() |> ignore
             myIsInQuotes <- false
             myField <- []
+            myFieldSize <- 0
             if settings.HonorQuotedFields && myCurrentChar = '"' then
                 myCurrentChar <- myLastChar
             else
                 ignore()
 
-            if myCurrentChar = char(0) then
-                lastFieldBlank <- true
-            else
-                lastFieldBlank <- false
+            lastFieldBlank <- myCurrentChar = char(0)
 
         member x.ResetRow() =
             x.ResetField()
@@ -98,7 +97,7 @@ module Parser =
  
         member x.Settings = settings
     
-        member x.Field = myField 
+        member x.Field = myField
     
         member x.CurrentChar 
             with get() = myCurrentChar 
@@ -119,9 +118,10 @@ module Parser =
         member x.FieldString = stringBuilder.ToString()
 
         member x.AddCharacter c = 
-            if settings.FieldMaxSize.IsSome && myField.Length >= settings.FieldMaxSize.Value
-                then failwithf "Parsing aborted because the current field exceeds the maximum size limit of %i characters" settings.FieldMaxSize.Value
-                else ignore()
+            match settings.FieldMaxSize with
+            | Some maxSize when myFieldSize >= maxSize -> failwithf "Parsing aborted because the current field exceeds the maximum size limit of %i characters" settings.FieldMaxSize.Value
+            | Some maxSize -> myFieldSize <- myFieldSize + 1
+            | _ -> ignore()
             myField <- c :: myField
             stringBuilder.Append(c) |> ignore
     and CharMatch =

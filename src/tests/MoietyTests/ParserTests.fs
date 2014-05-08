@@ -394,3 +394,10 @@ type ``Given a parser`` () =
         let testString = ",,\r\n,,\r\n1,2,3\r\none,two,three\r\n,,\r\n,,\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
         (fun () -> parser.AllRows() |> List.ofSeq |> ignore) |> should throw typeof<System.Exception>
+
+    [<Test>]
+    member test.``Field size limit correctly resets after each field is parsed`` () = 
+        let testString = ",,\r\n1,2,3\r\n1,2,3\r\n1,2,3\r\1,2,3"
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
+        let rows = parser.AllRows() |> List.ofSeq
+        rows |> List.length |> should equal 5
