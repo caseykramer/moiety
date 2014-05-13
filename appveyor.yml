@@ -1,0 +1,5 @@
+build_script:
+    - ps: .\build.bat
+test:
+    assemblies:
+        - DSVFileParserTests.dll

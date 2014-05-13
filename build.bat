@@ -1,4 +1,7 @@
 @echo off
 cls
-"tools\fake\Fake.exe" build.fsx
-pause
+if not exist tools\FAKE\tools\Fake.exe (
+    .tools\nuget\nuget.exe install FAKE -OutputDirectory tools -ExcludeVersion
+)
+
+"tools\FAKE\tools\Fake.exe" build.fsx %*
