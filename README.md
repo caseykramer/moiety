@@ -16,6 +16,9 @@ Parser for string delimited files
 * Provides constant memory usage, even when dealing with large files
 * Includes an optional field-length limit to keep badly-formed data from eating memory
 
+
+[![Build status](https://ci.appveyor.com/api/projects/status/591mu9ky254ahkxl)](https://ci.appveyor.com/project/caseykramer/moiety)
+
 ### How to use it
 There are two classes available depdending on whether you're working with files or generic streams.  There 
 are constructor overloads on each that allow you to specify field and row delimiters, and whether or not to
