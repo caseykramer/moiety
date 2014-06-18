@@ -3,6 +3,30 @@
 module Parser = 
 
     open System
+        
+    type CharSequence = 
+         | Empty
+         | Cons of char*Lazy<CharSequence>
+
+    [<AutoOpen>]
+    module Patterns = 
+
+        let (|Value|) (l:Lazy<'a>) = Value l.Value
+
+        let (|Single|_|) s = 
+            match s with
+            | Cons (c,Value (Empty)) -> Some c
+            | _ -> None
+
+        let (|StartsWith|_|) prefix s = 
+            let rec loop charSeq = 
+                match charSeq with
+                | p::prefix,(Cons(r,rest)) when p = r -> loop (prefix,rest.Value)
+                | [],rest -> Some(rest)
+                | _ -> None
+            loop (prefix,s)
+
+        let (|QUOTE|NOTQUOTE|) c = if c = "\"" then QUOTE else NOTQUOTE
 
     type ParseSettings(fieldDelim:string,rowDelim:string,honorQuotes:bool,fieldMaxSize:int option) = 
         let fieldLast = fieldDelim.Chars(fieldDelim.Length - 1)
