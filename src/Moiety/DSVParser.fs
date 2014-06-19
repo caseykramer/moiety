@@ -16,8 +16,9 @@
         let mutable endOfFile = false
         let mutable currentRow:string seq = null
         let mutable settings = new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,None)
-        let delimiter = getDelimiterMatcher settings
-        let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)                
+        let mutable charSeq = charSequence.ToCharSequence chars
+        let mutable rowError = false
+        //let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)                
         
         member internal x.Chars = chars
 
@@ -39,27 +40,33 @@
             endOfFile <- false
             chars.Reset()
             currentRow <- null
-            parseState <- new ParseState(chars,settings,[],char(0),char(0),false,delimiter)
+            charSeq <- charSequence.ToCharSequence chars
 
         member x.NextField():string =
             if endOfFile then
                 null
             else
-                let result = getField chars (settings) parseState
-                match result with 
-                    | (Parser.EndOfFile,field) -> 
+                match getField settings charSeq with 
+                    | FieldResult.EndOfFile (field) -> 
                         endOfFile <- true
                         endOfRow <- true
                         field
-                    | (Parser.EndOfRow,field) ->
-                        parseState.ResetRow()
+                    | FieldResult.EndOfRow (field,rest) ->
                         endOfRow <- true
+                        endOfFile <- false
+                        charSeq <- rest
                         field
-                    | (Parser.EndOfField, field) -> 
+                    | FieldResult.EndOfField (field,rest) -> 
                         endOfRow <- false
                         endOfFile <- false
-                        parseState.ResetField()
+                        charSeq <- rest
                         field
+                    | FieldResult.FieldError rest ->
+                        endOfRow <- true
+                        endOfFile <- false
+                        charSeq <- rest
+                        rowError <- true
+                        ""
 
         member x.CurrentRow = currentRow
         member x.GetNextRow():bool =

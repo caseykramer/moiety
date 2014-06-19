@@ -13,16 +13,19 @@ type ``Given a parser`` () =
     member test.``When passed a string containing text with no separators it returns it`` () =
         let testString = string("onetwothree")
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
-
-        let (x,result) = getField chars (defaultSettings) <| new ParseState(chars,defaultSettings,[],char(0),char(0),false, (getDelimiterMatcher defaultSettings))
-        result |> should equal "onetwothree"
+        let c = charSequence.ToCharSequence chars
+        match getField (defaultSettings) c with
+        | FieldResult.EndOfFile (result) -> result |> should equal "onetwothree"
+        | _ as wrong -> Assert.Fail(sprintf "Should have received FieldResult.EndOfFile but instead received %A" wrong)
 
     [<Test>]
     member test.``When passed a string containing text with a single separator it returns the first field (before the separator)`` ()=
         let testString = string("one,two")
         use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
-        let (x,result) = getField chars (defaultSettings) <| new ParseState(chars,defaultSettings,[],char(0),char(0),false, (getDelimiterMatcher defaultSettings))
-        result |> should equal "one"
+        let c = charSequence.ToCharSequence chars
+        match getField (defaultSettings) c with
+        | FieldResult.EndOfField(result,_) -> result |> should equal "one"
+        | _ as wrong -> Assert.Fail(sprintf "Should have received FieldResult.EndOfFile but instead received %A" wrong)
 
     [<Test>]
     member test.``When passed a string containing multiple fields it returns the fields as a sequence`` ()=
@@ -152,7 +155,7 @@ type ``Given a parser`` () =
         row2 |> should contain "c"
         row2 |> should contain "d" 
 
-    [<Test>]
+    [<Test;Ignore("No longer valid since we're treating double quotes as invalid without honor quotes enabled")>]
     member test.``Delimiters inside double quoted fields are not skipped if HonorQuotedFields is false`` ()=
         let testString = string("\"one,two\",three")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),defaultSettings.FieldDelimiter,defaultSettings.RowDelimiter,false)
@@ -397,7 +400,14 @@ type ``Given a parser`` () =
 
     [<Test>]
     member test.``Field size limit correctly resets after each field is parsed`` () = 
-        let testString = ",,\r\n1,2,3\r\n1,2,3\r\n1,2,3\r\1,2,3"
+        let testString = ",,\r\n1,2,3\r\n1,2,3\r\n1,2,3\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
         let rows = parser.AllRows() |> List.ofSeq
         rows |> List.length |> should equal 5
+
+    [<Test>]
+    member test.``Standard newline endings will allow mixed CR, LR, and CR_LF``() = 
+        let testString = "1,2\r\n3,4\r5,6\n7,8\n9,10\r\n11,12\r\n"
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
+        let rows = parser.AllRows() |> List.ofSeq
+        rows |> List.length |> should equal 6

@@ -8,33 +8,18 @@ module Parser =
          | Empty
          | Cons of char*Lazy<CharSequence>
 
-    [<AutoOpen>]
-    module Patterns = 
-
-        let (|Value|) (l:Lazy<'a>) = Value l.Value
-
-        let (|Single|_|) s = 
-            match s with
-            | Cons (c,Value (Empty)) -> Some c
-            | _ -> None
-
-        let (|StartsWith|_|) prefix s = 
-            let rec loop charSeq = 
-                match charSeq with
-                | p::prefix,(Cons(r,rest)) when p = r -> loop (prefix,rest.Value)
-                | [],rest -> Some(rest)
-                | _ -> None
-            loop (prefix,s)
-
-        let (|QUOTE|NOTQUOTE|) c = if c = "\"" then QUOTE else NOTQUOTE
+    module Option = 
+        let getOrElse v op = match op with 
+                             | None -> v
+                             | Some x -> x
 
     type ParseSettings(fieldDelim:string,rowDelim:string,honorQuotes:bool,fieldMaxSize:int option) = 
         let fieldLast = fieldDelim.Chars(fieldDelim.Length - 1)
         let rowLast = rowDelim.Chars(rowDelim.Length - 1)
         let rowFirstChar = rowDelim.Chars(0)
-        let rowDelimChars = (rowDelim.ToCharArray() |> Array.rev)
+        let rowDelimChars = (rowDelim.ToCharArray() |> List.ofArray)
         let isRowDelimNewline = rowDelim.Contains("\r") || rowDelim.Contains("\n")
-        let fieldDelimChars = fieldDelim.ToCharArray()
+        let fieldDelimChars = fieldDelim.ToCharArray() |> List.ofArray
         let isSingleCharFieldDelim = fieldDelimChars.Length = 1
         let charFieldDelim = fieldDelimChars.[0]
 
@@ -83,6 +68,161 @@ module Parser =
             else
                 segmentMatches
 
+    
+    [<AutoOpen>]
+    module Patterns = 
+        open System.Text
+
+        let append (c:char) (sb:StringBuilder) = sb.Append(c)
+        let appendList (c:char list) (sb:StringBuilder) = sb.Append(c |> List.toArray)
+
+        let (|Value|) (l:Lazy<'a>) = Value l.Value
+
+        let (|Single|_|) s = 
+            match s with
+            | Cons (c,Value (Empty)) -> Some c
+            | _ -> None
+
+        let (|StartsWith|_|) prefix s = 
+            let rec loop charSeq = 
+                match charSeq with
+                | p::prefix,(Cons(r,rest)) when p = r -> loop (prefix,rest.Value)
+                | [],rest -> Some(rest)
+                | _ -> None
+            loop (prefix,s)
+
+        let (|NewLine|_|) s = 
+            match s with
+            | StartsWith ['\r';'\n'] rest
+            | StartsWith ['\n';'\r'] rest
+            | StartsWith ['\r'] rest
+            | StartsWith ['\n'] rest -> Some(rest)
+            | _ -> None
+
+        let (|QUOTE|NOTQUOTE|) c = if c = '"' then QUOTE else NOTQUOTE
+
+        type FieldResult = 
+             | EndOfField of string*CharSequence
+             | EndOfRow of string*CharSequence
+             | EndOfFile of string
+             | FieldError of CharSequence
+
+        let (|Field|) (settings:ParseSettings) (cseq:CharSequence) =
+            let getFieldText = Option.map string >> Option.getOrElse ""
+            let rec loop (sb:StringBuilder option) inQuotes ccount (s:CharSequence) = 
+                match settings.FieldMaxSize with
+                | Some max when max <= ccount -> failwithf "Parsing aborted because the current field exceeds the maximum size limit of %i characters" max
+                | _ -> ignore()
+
+                match inQuotes with
+                | false ->
+                    match s with
+                    | StartsWith settings.FieldDelimChars (Cons(QUOTE,Value(rest))) ->
+                        if settings.HonorQuotedFields 
+                            then loop sb true (ccount + 1) rest
+                            else loop None false (ccount + 1) rest
+                    | StartsWith settings.FieldDelimChars (rest) ->
+                        Field(EndOfField(sb |> getFieldText,rest))
+                    | NewLine rest when settings.IsRowDelimNewline ->
+                        Field (EndOfRow(sb |> getFieldText,rest))
+                    | StartsWith settings.RowDelimChars rest when sb.IsSome ->
+                        Field (EndOfRow(sb |> getFieldText,rest))
+                    | StartsWith settings.RowDelimChars rest ->
+                        Field (FieldError(rest))
+                    | Cons(QUOTE,Value(rest)) when sb.IsSome && sb.Value.Length > 0 ->
+                        loop None false (ccount + 1) rest
+                    | Cons (QUOTE,Value(rest)) -> loop sb true (ccount + 1) rest
+                    | Cons(QUOTE,Value(StartsWith settings.FieldDelimChars rest)) when sb.IsSome ->
+                        Field (EndOfField(sb |> getFieldText,rest))
+                    | Cons(c,Value(StartsWith settings.FieldDelimChars rest)) when sb.IsSome ->
+                        Field(EndOfField(sb |> Option.map (append c) |> getFieldText,rest))
+                    | Cons(c,Value(rest)) -> loop (sb |> Option.map (append c)) false (ccount + 1) rest
+                    | Cons(c,Value(Empty)) -> Field(EndOfFile (sb |> getFieldText))
+                    | Empty when sb.IsSome -> Field(EndOfFile (sb |> getFieldText))
+                    | Empty -> Field(FieldError(Empty))
+                | true ->
+                    match s with 
+                    | Cons(QUOTE,Value(StartsWith settings.FieldDelimChars rest)) when sb.IsSome ->
+                        Field(EndOfField(sb |> getFieldText,rest))
+                    | Cons(QUOTE,Value(NewLine rest)) when settings.IsRowDelimNewline ->
+                        Field(EndOfRow(sb |> getFieldText,rest))
+                    | Cons(QUOTE,Value(StartsWith settings.RowDelimChars rest)) when sb.IsSome ->
+                        Field(EndOfRow(sb |> getFieldText,rest))
+                    | Cons(QUOTE,Value(Cons(QUOTE,Value(rest)))) ->
+                        loop (sb |> Option.map (append '"')) true (ccount + 2) rest
+                    | Cons(QUOTE,Value(Empty)) ->
+                        Field(EndOfFile(sb |> getFieldText))
+                    | Cons(QUOTE,Value(rest)) ->
+                        loop None false (ccount + 1) rest
+                    | Cons(c,Value(rest)) -> loop (sb |> Option.map (append c)) true (ccount + 1) rest
+                    | Empty when sb.IsSome -> Field(EndOfFile(sb |> getFieldText))
+                    | Empty -> Field(FieldError(Empty))
+            loop (Some <| StringBuilder()) false 0 cseq
+    
+    type charSequence(stream:System.IO.Stream,encoding:System.Text.Encoding option) =
+        let buffersize = 0x80000
+        let mutable encodingUsed = System.Text.Encoding.Default
+        let getReader (stream:System.IO.Stream) = 
+            let sr =
+                match encoding with
+                | None -> new System.IO.StreamReader(stream,true)
+                | Some(e) -> new System.IO.StreamReader(stream,e,true)
+            encodingUsed <- sr.CurrentEncoding
+            sr
+
+        let mutable reader = getReader stream
+        let buffer = Array.init(buffersize)(fun i -> char(0))
+    
+        let mutable currentIdx = 0
+        let mutable maxIdx = 0
+
+        let reloadBuffer size=
+            maxIdx <- reader.Read(buffer,0,size)
+            if maxIdx > 0 then
+                currentIdx <- 0
+                true
+            else
+                false
+        member x.CurrentEncoding
+            with get() = encodingUsed
+        member x.Reset() = 
+            currentIdx <- 0
+            maxIdx <- 0
+            match stream.CanSeek with
+            | true -> stream.Seek(0L,IO.SeekOrigin.Begin) |> ignore
+            | false -> failwith "Cannot Reset a stream which does not support Seeking"
+            reader <- getReader stream
+
+        member private this.Get() = 
+            (this :> System.Collections.Generic.IEnumerator<char>).Current
+
+        member private this.Next() = 
+            (this :> System.Collections.Generic.IEnumerator<char>).MoveNext()
+
+        static member ToCharSequence(cs:charSequence) = 
+            match cs.Next() with
+            | false -> CharSequence.Empty
+            | true -> CharSequence.Cons(cs.Get(),lazy(charSequence.ToCharSequence cs))
+        
+        interface System.Collections.Generic.IEnumerator<char> with
+            member e.MoveNext() = 
+                    let nextIdx = currentIdx + 1
+                    if (nextIdx) < maxIdx then
+                        currentIdx <- nextIdx
+                        true
+                    else
+                        reloadBuffer buffersize
+
+            member e.Dispose() = reader.Dispose()
+            member e.Reset() = 
+                currentIdx <- 0
+                maxIdx <- 0
+            member e.Current with get() = buffer.[currentIdx]
+            member e.Current with get() = box(buffer.[currentIdx])    
+    
+    let getField (settings:ParseSettings) (cSeq:CharSequence) = 
+        match cSeq with
+        | Field settings f -> f
 
     let defaultSettings = new ParseSettings(",",System.Environment.NewLine,true,None)
 
@@ -159,85 +299,8 @@ module Parser =
         | EndOfRow
         | EndOfFile
 
-    type charSequence(stream:System.IO.Stream,encoding:System.Text.Encoding option) =
-        let buffersize = 0x80000
-        let mutable encodingUsed = System.Text.Encoding.Default
-        let getReader (stream:System.IO.Stream) = 
-            let sr =
-                match encoding with
-                | None -> new System.IO.StreamReader(stream,true)
-                | Some(e) -> new System.IO.StreamReader(stream,e,true)
-            encodingUsed <- sr.CurrentEncoding
-            sr
-
-        let mutable reader = getReader stream
-        let buffer = Array.init(buffersize)(fun i -> char(0))
     
-        let mutable currentIdx = 0
-        let mutable maxIdx = 0
-
-        let reloadBuffer size=
-            maxIdx <- reader.Read(buffer,0,size)
-            if maxIdx > 0 then
-                currentIdx <- 0
-                true
-            else
-                false
-        member x.CurrentEncoding
-            with get() = encodingUsed
-        member x.Reset() = 
-            currentIdx <- 0
-            maxIdx <- 0
-            match stream.CanSeek with
-            | true -> stream.Seek(0L,IO.SeekOrigin.Begin) |> ignore
-            | false -> failwith "Cannot Reset a stream which does not support Seeking"
-            reader <- getReader stream
-
-        interface System.Collections.Generic.IEnumerator<char> with
-            member e.MoveNext() = 
-                    let nextIdx = currentIdx + 1
-                    if (nextIdx) < maxIdx then
-                        currentIdx <- nextIdx
-                        true
-                    else
-                        reloadBuffer buffersize
-
-            member e.Dispose() = reader.Dispose()
-            member e.Reset() = 
-                currentIdx <- 0
-                maxIdx <- 0
-            member e.Current with get() = buffer.[currentIdx]
-            member e.Current with get() = box(buffer.[currentIdx])    
-
-    let getDelimiterMatcher (settings:ParseSettings) = 
-        if settings.IsSingleCharFieldDelim && settings.IsRowDelimNewline then
-            fun (c:char) (s:ParseState) ->
-                match c with
-                    | x when x = settings.CharFieldDelim -> Field
-                    | '\r' when s.LastFieldBlank = true -> Row
-                    | '\n' when s.LastFieldBlank = true -> Row
-                    | '\r' when s.CurrentChar <> char(0) -> Row
-                    | '\n' when s.CurrentChar <> char(0) -> Row
-                    | '\r' when s.CurrentChar = char(0)  -> Skip
-                    | '\n' when s.CurrentChar = char(0)  -> Skip
-                    | _ -> NoMatch
-        elif settings.IsSingleCharFieldDelim then
-            fun (c:char) (s:ParseState) ->
-                match c with
-                    | x when x = settings.CharFieldDelim -> Field
-                    | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
-                    | _ -> NoMatch
-        else
-            fun (c:char) (s:ParseState) -> 
-                match c with
-                    | x when x = settings.FieldLast && 
-                            settings.FieldSegmentMatcher (c :: s.Field) (settings.FieldDelimChars) -> Field
-                    | x when x = settings.RowLast ->
-                        match (settings.RowFirstChar) with
-                            | _ when settings.RowSegmentMatcher (c :: s.Field) (settings.RowDelimChars) -> Row
-                            | _ -> NoMatch
-                    | _ -> NoMatch
-
+    (*
     let getField (stream) (settings:ParseSettings) (state:ParseState) =
 
         let cleanDelimiter (field:string) (delimiter:string) =
@@ -310,3 +373,4 @@ module Parser =
             loopFieldWithQuotes (state) 
         else
             loopFieldWithoutQuotes (state)       
+    *)
