@@ -11,17 +11,18 @@
                 | _ -> Some(x)
 
     [<AbstractClass>]
-    type DSVParser(chars:charSequence,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool) = 
+    type DSVParser(chars:CharStream,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool) = 
         let mutable endOfRow = false
         let mutable endOfFile = false
         let mutable currentRow:string seq = null
-        let mutable settings = new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,None)
-        let mutable charSeq = charSequence.ToCharSequence chars
+        let mutable settings = new Settings (fieldDelimiter,rowDelimiter,honorQuotes,None)
+        //let delimiter = getDelimiterMatcher settings
+        //let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)
         let mutable rowError = false
-        //let mutable parseState = new ParseState(chars,settings,[],char(0),char(0),false, delimiter)                
         
         member internal x.Chars = chars
 
+        member x.RowError = rowError
         member x.CurrentEncoding with get() = chars.CurrentEncoding
         member x.IsEndOfRow = endOfRow
         member x.IsEndOfFile = endOfFile
@@ -30,8 +31,8 @@
                          | None -> -1
                          | Some i -> i
             and set(v) = if v <= 0 
-                            then settings <- new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,None)
-                            else settings <-new ParseSettings (fieldDelimiter,rowDelimiter,honorQuotes,Some v)
+                            then settings <- new Settings (fieldDelimiter,rowDelimiter,honorQuotes,None)
+                            else settings <-new Settings (fieldDelimiter,rowDelimiter,honorQuotes,Some v)
                          x.Reset()
 
 
@@ -40,39 +41,46 @@
             endOfFile <- false
             chars.Reset()
             currentRow <- null
-            charSeq <- charSequence.ToCharSequence chars
+            //parseState <- new ParseState(chars,settings,[],char(0),char(0),false,delimiter)
 
         member x.NextField():string =
             if endOfFile then
                 null
             else
-                match getField settings charSeq with 
-                    | FieldResult.EndOfFile (field) -> 
+                let result = getField (settings) chars 
+                match result with 
+                    | EndOfFile (Valid field) -> 
                         endOfFile <- true
                         endOfRow <- true
                         field
-                    | FieldResult.EndOfRow (field,rest) ->
+                    | EndOfFile (Invalid) ->
+                        endOfFile <- true
                         endOfRow <- true
-                        endOfFile <- false
-                        charSeq <- rest
-                        field
-                    | FieldResult.EndOfField (field,rest) -> 
-                        endOfRow <- false
-                        endOfFile <- false
-                        charSeq <- rest
-                        field
-                    | FieldResult.FieldError rest ->
-                        endOfRow <- true
-                        endOfFile <- false
-                        charSeq <- rest
                         rowError <- true
                         ""
+                    | EndOfRow (Valid field) ->                        
+                        endOfRow <- true
+                        field
+                    | EndOfRow (Invalid) ->
+                        endOfRow <- true
+                        rowError <- true
+                        ""
+                    | EndOfField(Valid field) -> 
+                        endOfRow <- false
+                        endOfFile <- false
+                        field
+                    | EndOfField(Invalid) ->
+                        endOfRow <- false
+                        endOfFile <- false
+                        rowError <- true
+                        ""                    
 
         member x.CurrentRow = currentRow
         member x.GetNextRow():bool =
             if endOfFile then
                 false
             else
+                rowError <- false
                 let rec getRow fields = 
                     let field = x.NextField()
                     if endOfRow && not endOfFile then
@@ -97,20 +105,20 @@
             
 
     type DSVStream(stream:System.IO.Stream,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool,encoding:System.Text.Encoding) =        
-        inherit DSVParser(new charSequence (stream,encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
+        inherit DSVParser(new CharStream (stream,encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
 
-        new(stream) = new DSVStream(stream,Parser.defaultSettings.FieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null) 
-        new(stream,fieldDelimiter) = new DSVStream(stream,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
-        new(stream,fieldDelimiter,rowDelimiter) = new DSVStream(stream,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
+        new(stream) = new DSVStream(stream,Parser.defaultSettings.ColumnDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotes,null) 
+        new(stream,fieldDelimiter) = new DSVStream(stream,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotes,null)
+        new(stream,fieldDelimiter,rowDelimiter) = new DSVStream(stream,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotes,null)
         new(stream,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVStream(stream,fieldDelimiter,rowDelimiter,honorQuotes,null)
         new(stream,fieldDelimiter,rowDelimiter,honorQuotes,maxFieldSize:int) as this = new DSVStream(stream,fieldDelimiter,rowDelimiter,honorQuotes,null) then this.MaxFieldSize <- maxFieldSize
 
     type DSVFile(path:string,fieldDelimiter:string,rowDelimiter:string,honorQuotes:bool,encoding:System.Text.Encoding) =
-        inherit DSVParser(new charSequence(new System.IO.FileStream(path,System.IO.FileMode.Open,System.IO.FileAccess.Read),encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
+        inherit DSVParser(new CharStream(new System.IO.FileStream(path,System.IO.FileMode.Open,System.IO.FileAccess.Read),encoding |> Util.to_option),fieldDelimiter,rowDelimiter,honorQuotes)
 
-        new(path) = new DSVFile(path,Parser.defaultSettings.FieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
-        new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
-        new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotedFields,null)
+        new(path) = new DSVFile(path,Parser.defaultSettings.ColumnDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotes,null)
+        new(path,fieldDelimiter) = new DSVFile(path,fieldDelimiter,Parser.defaultSettings.RowDelimiter,Parser.defaultSettings.HonorQuotes,null)
+        new(path,fieldDelimiter,rowDelimiter) = new DSVFile(path,fieldDelimiter,rowDelimiter,Parser.defaultSettings.HonorQuotes,null)
         new(path,fieldDelimiter,rowDelimiter,honorQuotes) = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes,null)
         new(path,fieldDelimiter,rowDelimiter,honorQuotes,maxFieldSize:int) as this = new DSVFile(path,fieldDelimiter,rowDelimiter,honorQuotes) then this.MaxFieldSize <- maxFieldSize
 
@@ -118,4 +126,3 @@
             member x.Dispose() = (x.Chars :> IDisposable).Dispose()        
 
             
-

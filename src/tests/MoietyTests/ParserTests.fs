@@ -6,29 +6,25 @@ open Moiety.Parser
 open FsUnit
 
 
-[<TestFixture>]
-type ``Given a parser`` () =
+module ``Given a parser`` =
 
     [<Test>]
-    member test.``When passed a string containing text with no separators it returns it`` () =
+    let ``When passed a string containing text with no separators it returns it`` () =
         let testString = string("onetwothree")
-        use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
-        let c = charSequence.ToCharSequence chars
-        match getField (defaultSettings) c with
-        | FieldResult.EndOfFile (result) -> result |> should equal "onetwothree"
-        | _ as wrong -> Assert.Fail(sprintf "Should have received FieldResult.EndOfFile but instead received %A" wrong)
+        use chars = new CharStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
+
+        let result = getField (defaultSettings) chars  //<| new ParseState(chars,defaultSettings,[],char(0),char(0),false, (getDelimiterMatcher defaultSettings))
+        result |> should equal (EndOfFile(Valid "onetwothree"))
 
     [<Test>]
-    member test.``When passed a string containing text with a single separator it returns the first field (before the separator)`` ()=
+    let ``When passed a string containing text with a single separator it returns the first field (before the separator)`` ()=
         let testString = string("one,two")
-        use chars = new charSequence (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
-        let c = charSequence.ToCharSequence chars
-        match getField (defaultSettings) c with
-        | FieldResult.EndOfField(result,_) -> result |> should equal "one"
-        | _ as wrong -> Assert.Fail(sprintf "Should have received FieldResult.EndOfFile but instead received %A" wrong)
+        use chars = new CharStream (new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),Some(System.Text.Encoding.UTF8))
+        let result = getField (defaultSettings) chars  // <| new ParseState(chars,defaultSettings,[],char(0),char(0),false, (getDelimiterMatcher defaultSettings))
+        result |> should equal (EndOfField(Valid "one"))
 
     [<Test>]
-    member test.``When passed a string containing multiple fields it returns the fields as a sequence`` ()=
+    let ``When passed a string containing multiple fields it returns the fields as a sequence`` ()=
         let testString = string("one,two")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -40,7 +36,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``When passed a string containing multiple rows GetNextRow() returns all fields in a single row`` ()=
+    let ``When passed a string containing multiple rows GetNextRow() returns all fields in a single row`` ()=
         let testString = string("one,two\r\nthree,four")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -52,7 +48,7 @@ type ``Given a parser`` () =
 
 
     [<Test>]
-    member test.``When passed a string containing multiple rows AllRows returns all rows with all fields in each row as a sequence`` ()=
+    let ``When passed a string containing multiple rows AllRows returns all rows with all fields in each row as a sequence`` ()=
         let testString = string("one,two\r\nthree,four")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         let result = parser.AllRows() |> List.ofSeq
@@ -69,7 +65,7 @@ type ``Given a parser`` () =
         row2 |> should contain "four" 
 
     [<Test>]
-    member test.``When passed a string containing fields which are surrounded by double quotes, the quotes are not included in the result`` () =
+    let ``When passed a string containing fields which are surrounded by double quotes, the quotes are not included in the result`` () =
         let testString = string("\"one\",\"two\"")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -80,7 +76,7 @@ type ``Given a parser`` () =
         result |> should contain "two"
 
     [<Test>]
-    member test.``When passed a string containing a field surrounded by double quotes, that field may contain a field delimiter`` ()=
+    let ``When passed a string containing a field surrounded by double quotes, that field may contain a field delimiter`` ()=
         let testString = string("\"one,two\",three")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -91,7 +87,7 @@ type ``Given a parser`` () =
         result |> should contain "three"
 
     [<Test>]
-    member test.``When passed a string containing a field surrounded by double quotes, a double quote character in the field should be escaped with two double quote characters`` ()=
+    let ``When passed a string containing a field surrounded by double quotes, a double quote character in the field should be escaped with two double quote characters`` ()=
         let testString = string("\"one,\"\"two\"\"\",three")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -103,7 +99,7 @@ type ``Given a parser`` () =
         result |> should contain "three"
 
     [<Test>]
-    member test.``When passed a string containing a field surrounded by double quotes, that field may contain a row delimiter (newline)`` () =
+    let ``When passed a string containing a field surrounded by double quotes, that field may contain a row delimiter (newline)`` () =
         let testString = string ("\"one\r\ntwo\",three")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -114,7 +110,7 @@ type ``Given a parser`` () =
         result |> should contain "three"
 
     [<Test>]
-    member test.``Can specify an alternate delimiter for fields (such as |)`` ()=
+    let ``Can specify an alternate delimiter for fields (such as |)`` ()=
         let testString = string("one|two|three|four\r\na|b|c|d")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),"|")
         let result = parser.AllRows() |> Seq.toList
@@ -135,7 +131,7 @@ type ``Given a parser`` () =
         row2 |> should contain "d" 
 
     [<Test>]
-    member test.``Can specify an alternate delimiter for rows (such as ::)`` ()=
+    let ``Can specify an alternate delimiter for rows (such as ::)`` ()=
         let testString = string("one,two,three,four::a,b,c,d")
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),",","::")
         let result = parser.AllRows() |> List.ofSeq
@@ -155,10 +151,10 @@ type ``Given a parser`` () =
         row2 |> should contain "c"
         row2 |> should contain "d" 
 
-    [<Test;Ignore("No longer valid since we're treating double quotes as invalid without honor quotes enabled")>]
-    member test.``Delimiters inside double quoted fields are not skipped if HonorQuotedFields is false`` ()=
+    [<Test>]
+    let ``Delimiters inside double quoted fields are not skipped if HonorQuotedFields is false`` ()=
         let testString = string("\"one,two\",three")
-        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),defaultSettings.FieldDelimiter,defaultSettings.RowDelimiter,false)
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),defaultSettings.ColumnDelimiter,defaultSettings.RowDelimiter,false)
         parser.GetNextRow() |> should equal true
         let result = parser.CurrentRow |> Seq.toList
 
@@ -168,8 +164,9 @@ type ``Given a parser`` () =
         result |> should contain "three"
 
     [<Test>]
-    member test.``Fields beginning with quotes that are quoted are parsed correctly`` () =
-        let testString = string("\"\"\"one\"\",two,three\",four,five");
+    let ``Fields beginning with quotes that are quoted are parsed correctly`` () =
+
+        let testString = "\"\"\"one\"\",two,three\",four,five"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
         let result = parser.CurrentRow |> Seq.toList
@@ -180,9 +177,9 @@ type ``Given a parser`` () =
         result |> should contain "five"
 
     [<Test>]
-    member test.``Can use a unix-style line ending with quoted fields`` ()=
+    let ``Can use a unix-style line ending with quoted fields`` ()=
         let testString = "\"one\",\"two\",\"three\"\n\"a\",\"b\",\"c\""
-        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),defaultSettings.FieldDelimiter,"\n")
+        let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),defaultSettings.ColumnDelimiter,"\n")
         let result = parser.AllRows() |> Seq.toList
 
         result.Length |> should equal 2
@@ -194,7 +191,7 @@ type ``Given a parser`` () =
         result.[1] |> should contain "c"
 
     [<Test>]
-    member test.``Final Row-Delimiters are ignored if there is no row text`` () =
+    let ``Final Row-Delimiters are ignored if there is no row text`` () =
         let testString = "one,two,three\r\nfour,five,six\r\n"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         let result = parser.AllRows() |> Seq.toList
@@ -208,7 +205,7 @@ type ``Given a parser`` () =
         result.[1] |> should contain "six"
 
     [<Test>]
-    member test.``Reset restores reader to original state so you can parse contents from the beginning again....without breaking this time`` () =
+    let ``Reset restores reader to original state so you can parse contents from the beginning again....without breaking this time`` () =
         let testString = "one,two,three\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         let encoding = new System.Text.UnicodeEncoding(true,true)
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.Convert(System.Text.Encoding.UTF8,encoding,System.Text.Encoding.UTF8.GetBytes(testString))),",",System.Environment.NewLine,false,encoding)
@@ -225,7 +222,7 @@ type ``Given a parser`` () =
         firstRow |> should contain "three"
 
     [<Test>]
-    member test.``Can handle empty fields at the end of rows`` () =
+    let ``Can handle empty fields at the end of rows`` () =
         let testString = "one,two,three\r\n1,2,\r\n3,4,5"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -252,7 +249,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``Can handle empty fields at the beginning of rows`` () =
+    let ``Can handle empty fields at the beginning of rows`` () =
         let testString = "one,two,three\r\n,1,2\r\n3,4,5"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -282,7 +279,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``Can handle empty fields in the middle of rows`` () =
+    let ``Can handle empty fields in the middle of rows`` () =
         let testString = "one,two,three\r\n1,,2\r\n3,4,5"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -312,7 +309,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``Can handle empty fields in the entire row`` () =
+    let ``Can handle empty fields in the entire row`` () =
         let testString = "one,two,three\r\n,,\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -342,7 +339,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``Can handle multiple rows of empty fields`` () =
+    let ``Can handle multiple rows of empty fields`` () =
         let testString = "one,two,three\r\n,,\r\n,,\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         parser.GetNextRow() |> should equal true
@@ -380,7 +377,7 @@ type ``Given a parser`` () =
         parser.GetNextRow() |> should equal false
 
     [<Test>]
-    member test.``Can correctly parse single column files (no column delimiter)`` () = 
+    let ``Can correctly parse single column files (no column delimiter)`` () = 
         let testString = 
             [ "one"
               "two"
@@ -393,21 +390,116 @@ type ``Given a parser`` () =
         results |> List.length |> should equal 6
 
     [<Test>]
-    member test.``Can set field size limit for early bailout of badly formed files`` () = 
+    let ``Can set field size limit for early bailout of badly formed files`` () = 
         let testString = ",,\r\n,,\r\n1,2,3\r\none,two,three\r\n,,\r\n,,\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
         (fun () -> parser.AllRows() |> List.ofSeq |> ignore) |> should throw typeof<System.Exception>
 
     [<Test>]
-    member test.``Field size limit correctly resets after each field is parsed`` () = 
+    let ``Field size limit correctly resets after each field is parsed`` () = 
         let testString = ",,\r\n1,2,3\r\n1,2,3\r\n1,2,3\r\n1,2,3"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)),MaxFieldSize = 2)
         let rows = parser.AllRows() |> List.ofSeq
         rows |> List.length |> should equal 5
 
     [<Test>]
-    member test.``Standard newline endings will allow mixed CR, LR, and CR_LF``() = 
+    let ``Standard newline endings will allow mixed CR, LR, and CR_LF``() = 
         let testString = "1,2\r\n3,4\r5,6\n7,8\n9,10\r\n11,12\r\n"
         let parser = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testString)))
         let rows = parser.AllRows() |> List.ofSeq
         rows |> List.length |> should equal 6
+
+    module ``When using Quoted Fields`` =
+
+        let getParser (text:string) = new Moiety.DSVStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text)))
+
+        [<Test>]
+        let ``A single double quote in the middle a non-quoted field will mark the field as invalid, terminating at the field delimiter``() =
+            let testString = "123,456,789\r\none,t\"wo,three\r\nfour,\"five\",six"
+            let parser = getParser testString
+            parser.GetNextRow() |> should be True
+            parser.CurrentRow |> should contain "123"
+            parser.CurrentRow |> should contain "456"
+            parser.CurrentRow |> should contain "789"
+            
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be True
+            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> should contain "one"
+            parser.CurrentRow |> should contain "three"
+
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be False
+            parser.CurrentRow |> should contain "four"
+            parser.CurrentRow |> should contain "five"
+            parser.CurrentRow |> should contain "six"
+
+            parser.GetNextRow() |> should be False
+
+        [<Test>]
+        let ``A single double quote in the last field in a row will mark the field invalid, terminating at the row delimiter``() = 
+            let teststring = "123,456,789\r\none,two,th\"ree\r\nfour,\"five\",six"
+            let parser = getParser teststring
+            parser.GetNextRow() |> should be True
+            parser.CurrentRow |> should contain "123"
+            parser.CurrentRow |> should contain "456"
+            parser.CurrentRow |> should contain "789"
+            
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be True
+            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> should contain "one"
+            parser.CurrentRow |> should contain "two"
+
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be False
+            parser.CurrentRow |> should contain "four"
+            parser.CurrentRow |> should contain "five"
+            parser.CurrentRow |> should contain "six"
+
+            parser.GetNextRow() |> should be False
+
+        [<Test>]
+        let ``A single double quote in the middle of a field within double quotes will mark the field invalid, terminating at the first double quote and field delimiter``() = 
+            let teststring = "123,456,789\r\none,\"t\"wo\",\"three\"\r\nfour,\"five\",six"
+            let parser = getParser teststring
+            parser.GetNextRow() |> should be True
+            parser.CurrentRow |> should contain "123"
+            parser.CurrentRow |> should contain "456"
+            parser.CurrentRow |> should contain "789"
+            
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be True
+            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> should contain "one"
+            parser.CurrentRow |> should contain "three"
+
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be False
+            parser.CurrentRow |> should contain "four"
+            parser.CurrentRow |> should contain "five"
+            parser.CurrentRow |> should contain "six"
+
+            parser.GetNextRow() |> should be False
+
+        [<Test>]
+        let ``A signel double quote in the middle of a field within double quotes will mark the field invalid, terminating at the NEWLINE if no quote and field delimiter are present``() =
+            let teststring = "123,456,789\r\none,\"t\"wo,three\r\nfour,\"five\",six"
+            let parser = getParser teststring
+            parser.GetNextRow() |> should be True
+            parser.CurrentRow |> should contain "123"
+            parser.CurrentRow |> should contain "456"
+            parser.CurrentRow |> should contain "789"
+            
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be True
+            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> should contain "one"
+
+            parser.GetNextRow() |> should be True
+            parser.RowError |> should be False
+            parser.CurrentRow |> should contain "four"
+            parser.CurrentRow |> should contain "five"
+            parser.CurrentRow |> should contain "six"
+
+            parser.GetNextRow() |> should be False
