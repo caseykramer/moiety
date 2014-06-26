@@ -424,7 +424,7 @@ module ``Given a parser`` =
             
             parser.GetNextRow() |> should be True
             parser.RowError |> should be True
-            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> Seq.length |> should equal 2
             parser.CurrentRow |> should contain "one"
             parser.CurrentRow |> should contain "three"
 
@@ -447,7 +447,7 @@ module ``Given a parser`` =
             
             parser.GetNextRow() |> should be True
             parser.RowError |> should be True
-            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> Seq.length |> should equal 2
             parser.CurrentRow |> should contain "one"
             parser.CurrentRow |> should contain "two"
 
@@ -470,7 +470,7 @@ module ``Given a parser`` =
             
             parser.GetNextRow() |> should be True
             parser.RowError |> should be True
-            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> Seq.length |> should equal 2
             parser.CurrentRow |> should contain "one"
             parser.CurrentRow |> should contain "three"
 
@@ -483,7 +483,7 @@ module ``Given a parser`` =
             parser.GetNextRow() |> should be False
 
         [<Test>]
-        let ``A signel double quote in the middle of a field within double quotes will mark the field invalid, terminating at the NEWLINE if no quote and field delimiter are present``() =
+        let ``A single double quote in the middle of a field within double quotes will mark the field invalid, terminating at the NEWLINE if no quote and field delimiter are present``() =
             let teststring = "123,456,789\r\none,\"t\"wo,three\r\nfour,\"five\",six"
             let parser = getParser teststring
             parser.GetNextRow() |> should be True
@@ -493,7 +493,7 @@ module ``Given a parser`` =
             
             parser.GetNextRow() |> should be True
             parser.RowError |> should be True
-            parser.CurrentRow |> Seq.length |> should equal 3
+            parser.CurrentRow |> Seq.length |> should equal 2
             parser.CurrentRow |> should contain "one"
 
             parser.GetNextRow() |> should be True

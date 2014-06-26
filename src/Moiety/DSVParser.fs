@@ -57,14 +57,14 @@
                         endOfFile <- true
                         endOfRow <- true
                         rowError <- true
-                        ""
+                        null
                     | EndOfRow (Valid field) ->                        
                         endOfRow <- true
                         field
                     | EndOfRow (Invalid) ->
                         endOfRow <- true
                         rowError <- true
-                        ""
+                        null
                     | EndOfField(Valid field) -> 
                         endOfRow <- false
                         endOfFile <- false
@@ -73,7 +73,7 @@
                         endOfRow <- false
                         endOfFile <- false
                         rowError <- true
-                        ""                    
+                        null                    
 
         member x.CurrentRow = currentRow
         member x.GetNextRow():bool =
@@ -84,17 +84,24 @@
                 let rec getRow fields = 
                     let field = x.NextField()
                     if endOfRow && not endOfFile then
-                        (field :: fields) |> List.rev
+                        match field with
+                        | null -> None::fields |> List.rev
+                        | _ -> Some field :: fields |> List.rev
                     elif endOfFile && (field.Length > 0 || fields.Length > 0) then
-                        (field :: fields) |> List.rev
+                        match field with
+                        | null -> None::fields |> List.rev
+                        | _ -> Some field :: fields |> List.rev
                     elif endOfFile && fields |> List.length = 0 then
                             []
-                    else getRow (field :: fields)
+                    else 
+                        match field with
+                        | null -> getRow (None::fields)
+                        | _ -> getRow (Some field::fields)
                 match getRow [] with
                 | [] ->
                     false
                 | _ as row ->
-                    currentRow <- row |> Seq.ofList
+                    currentRow <- row |> Seq.choose id
                     true
                                 
         member x.AllRows() = 
