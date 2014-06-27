@@ -147,6 +147,7 @@ module Parser =
 
     type FieldQuoteState = 
          | Ignore
+         | IgnoreQuote
          | NotQuoted
          | InQuotes
 
@@ -189,7 +190,18 @@ module Parser =
                 match checkDelimiter settings stream stream.Current with
                 | Row _ -> invalidRow
                 | Column _ -> invalidField
-                | NoMatch _ -> loopQuote Ignore InField (fieldLength + 1) stream field
+                | _ -> loopQuote Ignore InField (fieldLength + 1) stream field
+            | IgnoreQuote,true ->
+                match stream.Current with
+                | Quote ->
+                        match stream.MoveNext(),checkDelimiter settings stream stream.Current with
+                        | false,_ -> invalidFile
+                        | _,Row _ -> invalidRow
+                        | _,Column _ -> invalidField
+                        | _,_ -> loopQuote IgnoreQuote InField (fieldLength + 1) stream field
+                | _ -> match checkDelimiter settings stream stream.Current with
+                       | Row _ -> invalidRow                       
+                       | _ -> loopQuote IgnoreQuote InField (fieldLength + 1) stream field
             | _ ->
                 match quoteState,fieldPosition,stream.Current with
                 | NotQuoted,StartOfField,Quote -> loopQuote InQuotes InField (fieldLength + 1) stream field 
@@ -201,7 +213,7 @@ module Parser =
                         match stream.Current with
                         | Quote -> loopQuote InQuotes InField (fieldLength + 1) stream (field.Append('"'))
                         | _ -> match checkDelimiter settings stream stream.Current with
-                               | NoMatch _ -> loopQuote Ignore InField (fieldLength + 1) stream field
+                               | NoMatch _ -> loopQuote IgnoreQuote InField (fieldLength + 1) stream field
                                | Row cs -> 
                                     stream.Requeue cs
                                     field |> validRow

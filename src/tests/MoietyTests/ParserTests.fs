@@ -493,7 +493,7 @@ module ``Given a parser`` =
             
             parser.GetNextRow() |> should be True
             parser.RowError |> should be True
-            parser.CurrentRow |> Seq.length |> should equal 2
+            parser.CurrentRow |> Seq.length |> should equal 1
             parser.CurrentRow |> should contain "one"
 
             parser.GetNextRow() |> should be True
