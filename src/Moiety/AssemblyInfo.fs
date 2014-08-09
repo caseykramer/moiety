@@ -1,13 +1,11 @@
-﻿namespace Moiety
-
+﻿module AssemblyInfo
 open System.Reflection
-open System.Runtime.CompilerServices
-open System.Runtime.InteropServices
 
-[<assembly: AssemblyTitle("Moiety")>]
-[<assembly: AssemblyDescription("Delimited Value File parser")>]
-[<assembly: AssemblyCopyright("Copyright © Casey Kramer 2012")>]
-[<assembly: AssemblyVersion("1.0.0.3")>]
-[<assembly: AssemblyFileVersion("1.0.0.3")>]
+[<assembly: AssemblyTitleAttribute("Moiety")>]
+[<assembly: AssemblyDescriptionAttribute("Delimited Value File parser")>]
+[<assembly: AssemblyProductAttribute("Moiety")>]
+[<assembly: AssemblyCopyrightAttribute("Copyright © Casey Kramer 2012-2014")>]
+[<assembly: AssemblyVersionAttribute("2.0.0.5")>]
+[<assembly: AssemblyFileVersionAttribute("2.0.0.5")>]
 
-do()
+()
