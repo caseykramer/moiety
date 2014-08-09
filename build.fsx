@@ -2,16 +2,19 @@
 #r "FakeLib.dll"
 
 open Fake
+open Fake.AssemblyInfoFile
+open Fake.ZipHelper
 
 let project = "Moiety"
 let authors = ["Casey Kramer"]
 let summary = "A parser for delimited text data (files or streams)"
 let description = "Supports using any string as a field delimiter, or row delimiter, quoted fields, and the ability to handle unicode reasonably well."
-let version = "1.0.0.6"
+let version = "2.0.0.5"
 let tags = "f# c# csv parsing text"
 let nugetDir = @".\nuget"
 
 let buildDir = @".\build\"
+let deployDir = @".\artifacts\"
 let testDir =  @".\test\"
 
 let nunitPath = @".\tools\NUnit"
@@ -27,6 +30,14 @@ Target "Clean" (fun _ ->
 )
 
 Target "BuildApp" (fun _ ->
+    CreateFSharpAssemblyInfo @".\src\Moiety\AssemblyInfo.fs"
+        [Attribute.Title "Moiety"
+         Attribute.Description "Delimited Value File parser"
+         Attribute.Product "Moiety"
+         Attribute.Copyright "Copyright © Casey Kramer 2012-2014"
+         Attribute.Version version
+         Attribute.FileVersion version ]
+
     MSBuildRelease buildDir "Build" appReferences
         |> Log "AppBuild-Output:"
 )
@@ -62,6 +73,18 @@ Target "Package" (fun _ ->
             Publish = hasBuildParam "nugetkey"})  "moiety.nuspec"
 )
   
+Target "Zip" (fun _ ->
+    CreateDir deployDir
+    let versionedZip = sprintf "%sMoiety.%s.zip" deployDir version
+    let unversionedZip = sprintf "%sMoiety.zip" deployDir
+    CreateZip buildDir
+              unversionedZip
+              ""
+              DefaultZipLevel
+              false
+              !!(buildDir + @".\*.*")
+)
+
 Target "All" DoNothing
 
 "Clean"
@@ -69,6 +92,7 @@ Target "All" DoNothing
     ==> "BuildTest"
     ==> "Test"
     ==> "Package"
+    ==> "Zip"
     ==> "All"
 
 Run <| getBuildParamOrDefault "target" "All"
