@@ -18,6 +18,7 @@ Parser for string delimited files
 
 
 [![Build status](https://ci.appveyor.com/api/projects/status/591mu9ky254ahkxl)](https://ci.appveyor.com/project/caseykramer/moiety)
+[Download latest](https://ci.appveyor.com/project/caseykramer/moiety/build/artifacts)
 
 ### How to use it
 There are two classes available depdending on whether you're working with files or generic streams.  There 
